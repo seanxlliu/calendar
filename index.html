@@ -4,16 +4,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="家庭日历">
+<meta name="build" content="2026100301">
 <link rel="apple-touch-icon" href="icon.png">
 <title>冰箱家庭日历</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&display=swap">
 <style>
 [hidden]{display:none!important}
-/* Layout: fridge board — oversized "today" strip on top, seven equal day columns below; stacks to a list on phones. */
+/* Layout: fridge board. Tablet = today panel + photo on top (80% of the screen), the next seven days in a strip (20%).
+   Phone = the same blocks stacked in a normal scrolling page. ES5 + prefixed flexbox only, for iOS 9 Safari. */
 :root{
   --bg:#eef2f3; --card:#ffffff; --ink:#132029; --muted:#5a6873; --line:#d5dde1;
-  --accent:#1f4f86; --accent-ink:#ffffff; --today:#fff6d6;
-  --bc:#0b7563; --cn:#c2372a;
+  --accent:#1f4f86; --accent-ink:#ffffff; --today:#fff6d6; --tint:rgba(31,79,134,.10);
+  --bc:#0b7563; --cn:#c2372a; --ol:#0f6cbd; --ic:#7a8791;
   --c1:#1f6fd1; --c2:#13915c; --c3:#e07a12; --c4:#7d4cc9; --c5:#d23c6f;
   --danger:#b3261e;
   --display:"Big Shoulders Display","Avenir Next Condensed","Helvetica Neue",Arial,sans-serif;
@@ -21,68 +23,89 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0e1418; --card:#172026; --ink:#eef3f5; --muted:#9db0bb; --line:#2a3740;
-  --accent:#8bbcf0; --accent-ink:#0e1418; --today:#2b2a1a;
-  --bc:#4fcab2; --cn:#ff7c68;
+  --accent:#8bbcf0; --accent-ink:#0e1418; --today:#2b2a1a; --tint:rgba(139,188,240,.14);
+  --bc:#4fcab2; --cn:#ff7c68; --ol:#6cb8f6; --ic:#8fa0ab;
   --c1:#6aa8f5; --c2:#4cc98d; --c3:#f3a04b; --c4:#b394f0; --c5:#f27aa1; --danger:#ff8a80; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e1418; --card:#172026; --ink:#eef3f5; --muted:#9db0bb; --line:#2a3740;
-  --accent:#8bbcf0; --accent-ink:#0e1418; --today:#2b2a1a;
-  --bc:#4fcab2; --cn:#ff7c68;
+  --accent:#8bbcf0; --accent-ink:#0e1418; --today:#2b2a1a; --tint:rgba(139,188,240,.14);
+  --bc:#4fcab2; --cn:#ff7c68; --ol:#6cb8f6; --ic:#8fa0ab;
   --c1:#6aa8f5; --c2:#4cc98d; --c3:#f3a04b; --c4:#b394f0; --c5:#f27aa1; --danger:#ff8a80; color-scheme:dark}
 
 html{font-size:16px;-webkit-text-size-adjust:100%}
 body{background:#eef2f3;background:var(--bg);color:#132029;color:var(--ink);font-family:var(--body);margin:0}
-.wrap{padding:12px 16px 24px 16px;max-width:1500px;margin:0 auto}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-appearance:none;border-radius:10px}
 button:focus,input:focus,select:focus,textarea:focus{outline:3px solid var(--accent);outline-offset:1px}
-
-/* Today strip */
-.top{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-flex-wrap:wrap;flex-wrap:wrap}
-.bigday{font-family:var(--display);font-weight:800;font-size:5.2rem;line-height:.85;margin-right:14px;color:var(--accent)}
-.daymeta{-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
-.daymeta .l1{font-size:1.5rem;font-weight:700;letter-spacing:.02em}
-.daymeta .l2{font-size:1.05rem;color:var(--muted);margin-top:4px}
-.daymeta .l3{margin-top:6px;font-size:1.05rem}
-.clock{font-family:var(--display);font-weight:600;font-size:4.2rem;line-height:.9;font-variant-numeric:tabular-nums;margin-left:12px}
-.hchip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.95rem;font-weight:700;margin:2px 6px 2px 0;color:#fff;background:var(--bc)}
-.hchip.cn{background:var(--cn)}
-
-.bar{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:14px 0 12px}
-.bar .title{font-size:1.25rem;font-weight:700;margin-right:auto;padding-right:8px}
 .btn{border:1px solid var(--line);background:var(--card);padding:8px 14px;margin:3px 0 3px 6px;font-size:1rem;line-height:1.2}
-.btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
 .btn.danger{color:var(--danger);border-color:var(--danger)}
 .btn.icon{padding:8px 12px;font-weight:700}
-
-.notice{background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin-bottom:10px;color:var(--muted);font-size:.95rem}
-
-/* Week */
-.week{display:-webkit-flex;display:flex;-webkit-align-items:stretch;align-items:stretch}
-.day{-webkit-flex:1 1 0;flex:1 1 0;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 10px 14px;margin-left:8px;min-height:340px;cursor:pointer}
-.day:first-child{margin-left:0}
-.day.is-today{background:var(--today);border:2px solid var(--accent)}
-.day.past{opacity:.62}
-.dh{display:-webkit-flex;display:flex;-webkit-align-items:baseline;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:6px}
-.dh .wd{font-weight:700;font-size:1.05rem}
-.dh .dn{font-family:var(--display);font-weight:800;font-size:2.3rem;line-height:1;margin-left:auto}
-.dh .ln{font-size:.85rem;color:var(--muted);margin-left:6px}
-.hl{font-size:.9rem;font-weight:700;margin:3px 0;color:var(--bc)}
-.hl.cn{color:var(--cn)}
-.ev{display:-webkit-flex;display:flex;-webkit-align-items:flex-start;align-items:flex-start;padding:5px 2px;border-radius:8px;font-size:1.05rem;line-height:1.3}
-.ev .dot{-webkit-flex:none;flex:none;width:.7em;height:.7em;border-radius:50%;margin:.33em 6px 0 0;background:var(--c1)}
-.ev .tm{font-weight:700;margin-right:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.ev .tx{min-width:0;word-wrap:break-word;overflow-wrap:break-word}
-.ev .src{font-size:.75rem;color:var(--muted);margin-left:4px}
-.ev:hover{background:rgba(127,127,127,.12)}
-.empty{color:var(--muted);font-size:.9rem;padding:4px 2px}
 .col1{background:var(--c1)!important}.col2{background:var(--c2)!important}.col3{background:var(--c3)!important}.col4{background:var(--c4)!important}.col5{background:var(--c5)!important}
+.colicloud{background:var(--ic)!important}.coloutlook{background:var(--ol)!important}
 
-/* Month */
+/* ---------- home: today panel ---------- */
+#home{padding:12px}
+.today{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px 10px;
+  display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;min-width:0}
+.thead{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-flex:none;flex:none;
+  border-bottom:2px solid var(--line);padding-bottom:12px}
+.bigday{font-family:var(--display);font-weight:800;font-size:5.4rem;line-height:.82;color:var(--accent);margin-right:14px;-webkit-flex:none;flex:none}
+.tmeta{-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
+.tmeta .l1{font-size:1.45rem;font-weight:800;letter-spacing:.01em;white-space:nowrap}
+.tmeta .l2{font-size:1rem;color:var(--muted);margin-top:3px;white-space:nowrap}
+.tmeta .l3{margin-top:5px}
+.clock{font-family:var(--display);font-weight:600;font-size:3.2rem;line-height:.9;font-variant-numeric:tabular-nums;margin-left:10px;-webkit-flex:none;flex:none}
+.hchip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.95rem;font-weight:700;margin:2px 6px 2px 0;color:#fff;background:var(--bc)}
+.hchip.cn{background:var(--cn)}
+
+.tlist{-webkit-flex:1 1 auto;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0 4px}
+.tall{padding:2px 0 6px}
+.pill{display:inline-block;border-radius:999px;padding:5px 14px;margin:3px 8px 3px 0;font-size:1.15rem;font-weight:700;color:#fff;background:var(--c1);cursor:pointer}
+.tev{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:8px 10px 8px 0;border-radius:14px;cursor:pointer;margin:2px 0}
+.tev .bar{-webkit-flex:none;flex:none;width:7px;border-radius:4px;-webkit-align-self:stretch;align-self:stretch;margin-right:12px;background:var(--c1)}
+.tev .tm{-webkit-flex:none;flex:none;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;line-height:1;min-width:2.9em}
+.tev .tm small{display:block;font-family:var(--body);font-weight:400;font-size:.36em;color:var(--muted);margin-top:.35em}
+.tev .tt{-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0;font-weight:700;line-height:1.18;word-wrap:break-word;overflow-wrap:break-word}
+.tev .tag{display:inline-block;font-size:.8rem;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:8px;vertical-align:middle;white-space:nowrap}
+.tev.past{opacity:.42}
+.tlist.hp .tev.past{display:none}
+.tev.next,.tev.cur{background:var(--tint)}
+.tev.next .tag.st,.tev.cur .tag.st{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.d0 .tev{font-size:1.7rem}.d1 .tev{font-size:1.45rem}.d2 .tev{font-size:1.2rem;padding-top:5px;padding-bottom:5px}
+.tnone{color:var(--muted);font-size:1.5rem;padding:22px 4px;font-weight:600}
+
+.tbar{-webkit-flex:none;flex:none;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-flex-wrap:wrap;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:6px}
+.tbar .st{margin-right:auto;color:var(--muted);font-size:.8rem;padding-right:8px;min-width:0}
+.tbar .btn{padding:6px 12px;font-size:.92rem}
+
+/* ---------- photo ---------- */
+.photo{position:relative;border-radius:18px;overflow:hidden;background:var(--line);height:62vw;margin-top:10px;cursor:pointer}
+.pl{position:absolute;left:0;top:0;right:0;bottom:0;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.2s;transition:opacity 1.2s}
+.pl.on{opacity:1}
+
+/* ---------- strip: the following days ---------- */
+.strip{margin-top:10px}
+.sd{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;cursor:pointer;overflow:hidden;min-width:0}
+.sh{display:-webkit-flex;display:flex;-webkit-align-items:baseline;align-items:baseline}
+.sh .swd{font-weight:700;font-size:.95rem;white-space:nowrap}
+.sh .sln{font-size:.75rem;color:var(--muted);margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sh .sdn{font-family:var(--display);font-weight:800;font-size:1.7rem;line-height:.9;margin-left:auto;padding-left:4px}
+.sl{font-size:.8rem;font-weight:700;color:var(--bc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.sl.cn{color:var(--cn)}
+.se{font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;line-height:1.3}
+.se b{font-variant-numeric:tabular-nums}
+.se .dot,.ev .dot,.mev .dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;margin-right:4px;background:var(--c1)}
+.smore{font-size:.75rem;color:var(--muted);margin-top:1px}
+.sd.we .swd{color:var(--cn)}
+
+/* ---------- month view ---------- */
+#monthv{padding:12px 16px 24px;max-width:1500px;margin:0 auto}
+.bar{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:4px 0 10px}
+.bar .title{font-size:1.5rem;font-weight:800;margin-right:auto;padding-right:8px}
 .mtable{width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed}
 .mtable th{font-size:.95rem;color:var(--muted);font-weight:700;padding:4px 0}
-.mtable td{background:var(--card);border:1px solid var(--line);border-radius:10px;vertical-align:top;padding:5px 6px;height:98px;cursor:pointer;overflow:hidden}
+.mtable td{background:var(--card);border:1px solid var(--line);border-radius:10px;vertical-align:top;padding:5px 6px;height:92px;cursor:pointer;overflow:hidden}
 .mtable td.other{opacity:.45}
 .mtable td.is-today{background:var(--today);border:2px solid var(--accent)}
 .mtable td.sel{box-shadow:inset 0 0 0 2px var(--ink)}
@@ -90,13 +113,18 @@ button:focus,input:focus,select:focus,textarea:focus{outline:3px solid var(--acc
 .mln{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mln.bc{color:var(--bc);font-weight:700}.mln.cn{color:var(--cn);font-weight:700}
 .mev{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.mev .dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;margin-right:3px;background:var(--c1)}
+.mdots{display:none}
+.mdots i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px;background:var(--c1)}
 .dlist{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px}
 .dlist h3{margin:0 0 6px;font-size:1.15rem}
+.hl{font-size:.95rem;font-weight:700;margin:3px 0;color:var(--bc)}
+.hl.cn{color:var(--cn)}
+.ev{padding:7px 4px;border-radius:8px;font-size:1.1rem;line-height:1.3;cursor:pointer}
+.ev .tm{font-weight:700;margin-right:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ev .src{font-size:.75rem;color:var(--muted);margin-left:6px}
+.empty{color:var(--muted);font-size:.95rem;padding:4px 2px}
 
-.foot{margin-top:14px;font-size:.85rem;color:var(--muted)}
-
-/* Modal */
+/* ---------- modal ---------- */
 .ov{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sheet{background:var(--card);color:var(--ink);max-width:560px;margin:30px auto;border-radius:14px;padding:18px 18px 20px}
 .sheet h2{margin:0 0 12px;font-size:1.35rem}
@@ -115,72 +143,107 @@ button:focus,input:focus,select:focus,textarea:focus{outline:3px solid var(--acc
 .acts{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;-webkit-align-items:center;align-items:center;margin-top:6px}
 .acts .sp{margin-right:auto}
 .err{color:var(--danger);font-size:.95rem;margin-top:6px}
-.hint{color:var(--muted);font-size:.88rem;line-height:1.45}
+.hint{color:var(--muted);font-size:.88rem;line-height:1.45;margin:6px 0 0}
 .kv{font-size:1.05rem;line-height:1.6}
+.sec{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.sec h3{margin:0 0 8px;font-size:1.05rem}
+.thumbs{margin:0 -4px}
+.th{display:inline-block;position:relative;width:84px;height:84px;margin:4px;border-radius:10px;background:var(--line);background-size:cover;background-position:center;vertical-align:top}
+.thx{position:absolute;right:-6px;top:-6px;width:28px;height:28px;border-radius:50%;border:2px solid var(--card);background:var(--danger);color:#fff;font-weight:700;font-size:16px;line-height:1;padding:0}
+.filebtn{position:relative;overflow:hidden;display:inline-block;margin-left:0}
+.filebtn input{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;font-size:100px;cursor:pointer}
 
-/* Tablet / fridge: bigger everything */
+/* ---------- tablet / fridge: one fixed screen ---------- */
 @media (min-width:700px){
   html{font-size:19px}
-  .bigday{font-size:6.4rem}
+  body.home{overflow:hidden}
+  body.home #home{position:fixed;left:0;top:0;right:0;bottom:0;padding:0}
+  .stage{position:absolute;left:12px;right:12px;top:12px;bottom:20%;display:-webkit-flex;display:flex}
+  .today{-webkit-flex:1.75 1 0;flex:1.75 1 0;padding:18px 20px 8px}
+  .photo{-webkit-flex:1 1 0;flex:1 1 0;height:auto;margin:0 0 0 10px}
+  .bigday{font-size:7.2rem}
+  .tmeta .l1{font-size:1.75rem}
+  .tmeta .l2{font-size:1.05rem}
+  .clock{font-size:4.3rem}
+  .d0 .tev{font-size:2.3rem}.d1 .tev{font-size:1.85rem}.d2 .tev{font-size:1.45rem}
+  .pill{font-size:1.25rem}
+  .tnone{font-size:1.9rem}
+  .strip{position:absolute;left:12px;right:12px;top:80%;bottom:10px;margin:0;padding-top:10px;display:-webkit-flex;display:flex}
+  .sd{-webkit-flex:1 1 0;flex:1 1 0;margin:0 0 0 7px;padding:6px 8px}
+  .sd:first-child{margin-left:0}
+  .sh .sln{display:none}
+  .se{font-size:.78rem}
+}
+@media (min-width:700px) and (orientation:portrait){
+  .stage{-webkit-flex-direction:column;flex-direction:column}
+  .today{-webkit-flex:2.2 1 0;flex:2.2 1 0;min-height:0}
+  .photo{margin:10px 0 0 0}
+  .bigday{font-size:8.4rem}
   .clock{font-size:5.4rem}
+  .sh .sln{display:inline}
+  .se{font-size:.86rem}
+  .sd{padding:8px 10px}
 }
-@media (min-width:700px) and (max-width:1180px){
-  .day{padding:8px 6px 12px;margin-left:5px}
-  .dh{display:block;text-align:center}
-  .dh .dn{display:block;font-size:2.4rem;margin:2px 0}
-  .dh .ln{display:block;margin:0}
-  .ev{font-size:.95rem;display:block}
-  .ev .dot{display:inline-block;vertical-align:middle;margin:0 4px 0 0}
-  .ev .tm{display:inline}
-  .ev .tx{display:inline}
-}
-/* Phone */
+/* phone */
 @media (max-width:699px){
-  .bigday{font-size:4rem}
-  .clock{font-size:2.6rem;margin-left:auto}
-  .daymeta .l1{font-size:1.2rem}
-  .week{display:block}
-  .day{margin:0 0 8px 0;min-height:0}
-  .day.past{display:none}
   .mtable{border-spacing:2px}
   .mtable td{height:58px;padding:3px}
   .mnum{font-size:1.15rem}
   .mev{display:none}
-  .mdots{display:block!important;margin-top:2px}
+  .mdots{display:block;margin-top:2px}
   .bar .title{width:100%;margin-bottom:6px}
-  .btn{margin:3px 6px 3px 0}
+  .bar .btn{margin:3px 6px 3px 0}
+  .sd{padding:10px 12px}
+  .bigday{font-size:4.2rem;margin-right:10px}
+  .clock{font-size:2.5rem;margin-left:6px}
+  .tmeta .l1{font-size:1.15rem;overflow:hidden;text-overflow:ellipsis}
+  .tmeta .l2{font-size:.85rem;overflow:hidden;text-overflow:ellipsis}
+  .tbar .st{width:100%;margin-bottom:4px}
+  .tbar .btn{margin:3px 6px 3px 0}
+  .se{font-size:1rem;white-space:normal}
+  .sl{font-size:.9rem}
 }
-.mdots{display:none}
-.mdots i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px;background:var(--c1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{-webkit-transition:none!important;transition:none!important}}
 </style>
-</head><body>
+</head><body class="home">
 
-<div class="wrap">
-  <div class="top">
-    <div class="bigday" id="t-day">–</div>
-    <div class="daymeta">
-      <div class="l1" id="t-l1"></div>
-      <div class="l2" id="t-l2"></div>
-      <div class="l3" id="t-l3"></div>
+<div id="home">
+  <div class="stage">
+    <div class="today">
+      <div class="thead">
+        <div class="bigday" id="t-day">–</div>
+        <div class="tmeta">
+          <div class="l1" id="t-l1"></div>
+          <div class="l2" id="t-l2"></div>
+          <div class="l3" id="t-l3"></div>
+        </div>
+        <div class="clock" id="t-clock">--:--</div>
+      </div>
+      <div class="tlist d0" id="t-list"></div>
+      <div class="tbar">
+        <span class="st" id="t-st"></span>
+        <button class="btn icon" id="h-prev" aria-label="往前">‹</button>
+        <button class="btn icon" id="h-next" aria-label="往后">›</button>
+        <button class="btn" id="h-month">月历</button>
+        <button class="btn primary" id="h-add">＋ 添加</button>
+        <button class="btn" id="h-set">设置</button>
+      </div>
     </div>
-    <div class="clock" id="t-clock">--:--</div>
+    <div class="photo" id="photo" hidden><div class="pl" id="pl0"></div><div class="pl" id="pl1"></div></div>
   </div>
+  <div class="strip" id="strip"></div>
+</div>
 
+<div id="monthv" hidden>
   <div class="bar">
     <div class="title" id="b-title"></div>
-    <button class="btn icon" id="b-prev" aria-label="上一页">‹</button>
-    <button class="btn" id="b-today">今天</button>
-    <button class="btn icon" id="b-next" aria-label="下一页">›</button>
-    <button class="btn" id="b-week">本周</button>
-    <button class="btn" id="b-month">月</button>
+    <button class="btn icon" id="b-prev" aria-label="上个月">‹</button>
+    <button class="btn" id="b-today">本月</button>
+    <button class="btn icon" id="b-next" aria-label="下个月">›</button>
     <button class="btn primary" id="b-add">＋ 添加</button>
-    <button class="btn" id="b-set" aria-label="设置">设置</button>
+    <button class="btn" id="b-home">返回今天</button>
   </div>
-
-  <div class="notice" id="notice" hidden></div>
   <div id="main"></div>
-  <div class="foot" id="foot"></div>
 </div>
 
 <div class="ov" id="ov" hidden><div class="sheet" id="sheet"></div></div>
@@ -193,14 +256,17 @@ var MN = ['','正','二','三','四','五','六','七','八','九','十','冬','
 var DN = ['','初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
 var WD = ['周日','周一','周二','周三','周四','周五','周六'];
 var WDL = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+var FEEDS = ['icloud', 'outlook'];
+var FEEDNAME = {icloud: 'iCloud', outlook: 'Outlook'};
+var BUILD = (function(){ var m = document.querySelector('meta[name=build]'); return m ? m.getAttribute('content') : ''; })();
 
 var S = {
-  view: 'week', anchor: null, sel: null,
-  events: {}, icloud: [], icloudAt: null, settings: {weekStart: 1, icsUrl: ''},
-  db: null, dbState: 'loading', canWrite: true,
-  modal: null, lastTouch: Date.now(), renderedDay: ''
+  view: 'home', anchor: null, sel: null, off: 0,
+  events: {}, feeds: {icloud: {items: [], at: null}, outlook: {items: [], at: null}},
+  settings: {weekStart: 1, icsUrl: '', outlookUrl: '', photoMin: 1},
+  db: null, dbState: 'loading', canWrite: true, busy: false,
+  modal: null, lastTouch: Date.now(), renderedDay: '', listHtml: ''
 };
-try { var v = localStorage.getItem('cal.view'); if (v === 'week' || v === 'month') S.view = v; } catch (e) {}
 
 /* ---------- dates ---------- */
 function pad(n){ return (n < 10 ? '0' : '') + n; }
@@ -213,6 +279,9 @@ function diffDays(a, b){ return Math.round((b - a) / 864e5); }
 function weekStartOf(d){ var ws = S.settings.weekStart === 0 ? 0 : 1; var off = (d.getDay() - ws + 7) % 7; return addDays(d, -off); }
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function inArr(a, v){ if (!a) return false; for (var i = 0; i < a.length; i++) if (a[i] === v) return true; return false; }
+function trim(s){ return String(s || '').replace(/^\s+|\s+$/g, ''); }
+function isWide(){ return (window.innerWidth || document.documentElement.clientWidth) >= 700; }
+function stripDays(){ return isWide() && window.innerHeight > window.innerWidth ? 4 : 7; }
 
 /* ---------- lunar ---------- */
 var lunarCache = {};
@@ -261,7 +330,6 @@ function holidaysOfYear(y){
   put(nthWd(y,9,1,2), '感恩节 Thanksgiving', 'bc');
   put(mk(y,10,11), '国殇纪念日 Remembrance Day', 'bc');
   put(mk(y,11,25), '圣诞节 Christmas Day', 'bc');
-  // Chinese festivals: walk the year
   var qm = LUNAR.QM[y], dz = LUNAR.DZ[y];
   if (qm) put(mk(y, +qm.substr(0,2) - 1, +qm.substr(2,2)), '清明', 'cn');
   if (dz) put(mk(y, +dz.substr(0,2) - 1, +dz.substr(2,2)), '冬至', 'cn');
@@ -285,7 +353,7 @@ function holidaysOfYear(y){
 }
 function holidaysOn(d){ return holidaysOfYear(d.getFullYear())[ymd(d)] || []; }
 
-/* ---------- events ---------- */
+/* ---------- events: merge own events + synced feeds for one day ---------- */
 function occursOn(ev, d, key){
   if (!ev || !ev.date) return false;
   if (ev.repeat === 'weekly') {
@@ -298,81 +366,121 @@ function occursOn(ev, d, key){
   return ev.date === key;
 }
 function itemsOn(d){
-  var key = ymd(d), out = [], id;
+  var key = ymd(d), out = [], id, f, i;
   for (id in S.events) if (S.events.hasOwnProperty(id)) {
     var ev = S.events[id];
     if (occursOn(ev, d, key)) out.push({id: id, title: ev.title, allDay: !!ev.allDay, start: ev.start || '', end: ev.end || '', color: ev.color || 1, weekly: ev.repeat === 'weekly', src: 'local'});
   }
-  for (var i = 0; i < S.icloud.length; i++) {
-    var it = S.icloud[i];
-    if (it.d === key) out.push({id: 'ic' + i, title: it.t, allDay: !!it.ad, start: it.s || '', end: it.e || '', color: 0, src: 'icloud', loc: it.l || '', ic: it});
+  for (f = 0; f < FEEDS.length; f++) {
+    var name = FEEDS[f], items = S.feeds[name].items;
+    for (i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (it.d === key) out.push({id: 'x-' + name + '-' + i, title: it.t, allDay: !!it.ad, start: it.s || '', end: it.e || '', color: 0, src: name, loc: it.l || '', raw: it});
+    }
   }
   out.sort(function(a, b){
     if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
-    return a.start < b.start ? -1 : a.start > b.start ? 1 : 0;
+    return a.start < b.start ? -1 : a.start > b.start ? 1 : a.title < b.title ? -1 : a.title > b.title ? 1 : 0;
   });
   return out;
 }
-function dotClass(it){ return it.src === 'icloud' ? '' : ' col' + (it.color || 1); }
+function colClass(it){ return it.src === 'local' ? 'col' + (it.color || 1) : 'col' + it.src; }
+function srcTag(it){ return it.src === 'local' ? (it.weekly ? '每周' : '') : FEEDNAME[it.src]; }
 function evHtml(it, key){
-  var tm = it.allDay ? '全天' : it.start;
-  return '<div class="ev" data-ev="' + esc(it.id) + '" data-date="' + key + '">' +
-    '<span class="dot' + dotClass(it) + '"' + (it.src === 'icloud' ? ' style="background:var(--muted)"' : '') + '></span>' +
-    '<div class="tx"><span class="tm">' + esc(tm) + '</span>' + esc(it.title) +
-    (it.weekly ? '<span class="src">每周</span>' : '') + (it.src === 'icloud' ? '<span class="src">iCloud</span>' : '') + '</div></div>';
+  var tag = srcTag(it);
+  return '<div class="ev" data-ev="' + esc(it.id) + '" data-date="' + key + '"><span class="dot ' + colClass(it) + '"></span>' +
+    '<span class="tm">' + esc(it.allDay ? '全天' : it.start) + '</span>' + esc(it.title) + (tag ? '<span class="src">' + esc(tag) + '</span>' : '') + '</div>';
 }
 
 /* ---------- rendering ---------- */
 var $ = function(id){ return document.getElementById(id); };
-function renderTop(){
-  var n = new Date(), t = today(), l = lunarOf(t), hs = holidaysOn(t);
+function nowStr(){ var n = new Date(); return pad(n.getHours()) + ':' + pad(n.getMinutes()); }
+
+function renderToday(){
+  var t = today(), key = ymd(t), l = lunarOf(t), hs = holidaysOn(t), now = nowStr(), i;
   $('t-day').textContent = t.getDate();
   $('t-l1').textContent = (t.getMonth() + 1) + '月' + t.getDate() + '日 ' + WDL[t.getDay()];
-  $('t-l2').textContent = lunarFull(l) + '  ·  ' + t.getFullYear() + '年';
-  var h = '';
-  for (var i = 0; i < hs.length; i++) h += '<span class="hchip' + (hs[i].type === 'cn' ? ' cn' : '') + '">' + esc(hs[i].name) + '</span>';
-  var items = itemsOn(t), nowStr = pad(n.getHours()) + ':' + pad(n.getMinutes()), next = null;
-  for (var j = 0; j < items.length; j++) if (!items[j].allDay && items[j].start >= nowStr) { next = items[j]; break; }
-  if (next) h += '<span>下一项：<b>' + esc(next.start) + '</b> ' + esc(next.title) + '</span>';
-  else if (!hs.length) h += '<span style="color:var(--muted)">' + (items.length ? '今天的安排已全部结束' : '今天没有安排') + '</span>';
-  $('t-l3').innerHTML = h;
-  $('t-clock').textContent = nowStr;
+  $('t-l2').textContent = lunarFull(l) + ' · ' + t.getFullYear() + '年';
+  var c = '';
+  for (i = 0; i < hs.length; i++) c += '<span class="hchip' + (hs[i].type === 'cn' ? ' cn' : '') + '">' + esc(hs[i].name) + '</span>';
+  $('t-l3').innerHTML = c;
+  $('t-clock').textContent = now;
+
+  var items = itemsOn(t), all = '', rows = '', nTimed = 0, nextDone = false;
+  for (i = 0; i < items.length; i++) {
+    var it = items[i], tag = srcTag(it);
+    if (it.allDay) { all += '<span class="pill ' + colClass(it) + '" data-ev="' + esc(it.id) + '" data-date="' + key + '">' + esc(it.title) + '</span>'; continue; }
+    nTimed++;
+    var endT = it.end || it.start, cls = '', st = '';
+    if (it.start <= now && it.end && now < it.end) { cls = ' cur'; st = '进行中'; }
+    else if (endT < now || (!it.end && it.start < now)) cls = ' past';
+    else if (!nextDone) { cls = ' next'; st = '下一项'; nextDone = true; }
+    rows += '<div class="tev' + cls + '" data-ev="' + esc(it.id) + '" data-date="' + key + '"><span class="bar ' + colClass(it) + '"></span>' +
+      '<span class="tm">' + esc(it.start) + (it.end ? '<small>到 ' + esc(it.end) + '</small>' : '') + '</span>' +
+      '<span class="tt">' + esc(it.title) + (st ? '<span class="tag st">' + st + '</span>' : '') + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</span></div>';
+  }
+  var h = (all ? '<div class="tall">' + all + '</div>' : '') + rows;
+  if (!items.length) h = '<div class="tnone">' + (S.dbState === 'loading' ? '正在读取日程…' : '今天没有安排') + '</div>';
+  var n = nTimed + (all ? 1 : 0), dens = n <= 4 ? 'd0' : n <= 6 ? 'd1' : 'd2';
+  if (h !== S.listHtml) { $('t-list').innerHTML = h; S.listHtml = h; }
+  var le = $('t-list'); le.className = 'tlist ' + dens;
+  if (isWide()) {
+    while (dens !== 'd2' && le.scrollHeight > le.clientHeight + 1) { dens = dens === 'd0' ? 'd1' : 'd2'; le.className = 'tlist ' + dens; }
+    if (le.scrollHeight > le.clientHeight + 1) le.className = 'tlist d2 hp';  /* still too long: drop what is already over */
+  }
+  $('t-st').textContent = statusText();
+  $('h-add').hidden = !S.canWrite || !S.db;
+}
+
+function statusText(){
+  if (S.dbState === 'notoken') return '未连接日程数据，点「设置」粘贴令牌';
+  if (S.dbState === 'auth') return '访问令牌失效，点「设置」重新粘贴';
+  if (S.dbState === 'neterr') return '暂时连不上 GitHub，稍后自动重试';
+  if (S.dbState === 'loading') return '正在读取…';
+  var s = S.dbState === 'stale' ? '暂时无法更新' : '';
+  for (var i = 0; i < FEEDS.length; i++) {
+    var f = S.feeds[FEEDS[i]];
+    if (f.at) { var u = new Date(f.at); s += (s ? ' · ' : '') + FEEDNAME[FEEDS[i]] + ' ' + (u.getMonth() + 1) + '/' + u.getDate() + ' ' + pad(u.getHours()) + ':' + pad(u.getMinutes()); }
+  }
+  return s;
+}
+
+function renderStrip(){
+  var el = $('strip'), t = today(), wide = isWide(), h = '', lines = 99;
+  if (wide) { var ch = el.clientHeight || 140; lines = Math.max(1, Math.floor((ch - 10 - 14 - 32) / 20)); }
+  for (var i = 0, nd = stripDays(); i < nd; i++) {
+    var d = addDays(t, 1 + S.off + i), key = ymd(d), hs = holidaysOn(d), items = itemsOn(d), l = lunarOf(d);
+    var label = (S.off === 0 && i === 0) ? '明天' : WD[d.getDay()];
+    var showMd = d.getDate() === 1 || i === 0 || S.off !== 0;
+    h += '<div class="sd' + (d.getDay() === 0 || d.getDay() === 6 ? ' we' : '') + '" data-day="' + key + '"><div class="sh"><span class="swd">' + label + '</span>' +
+      '<span class="sln">' + esc(lunarLabel(l)) + '</span><span class="sdn">' + (showMd ? (d.getMonth() + 1) + '/' : '') + d.getDate() + '</span></div>';
+    var left = lines, j;
+    for (j = 0; j < hs.length && left > 0; j++, left--) h += '<div class="sl' + (hs[j].type === 'cn' ? ' cn' : '') + '">' + esc(hs[j].name.split(' ')[0]) + '</div>';
+    var show = items.length > left ? Math.max(0, left - 1) : items.length;
+    for (j = 0; j < show; j++) h += '<div class="se"><span class="dot ' + colClass(items[j]) + '"></span>' + (items[j].allDay ? '' : '<b>' + esc(items[j].start) + '</b> ') + esc(items[j].title) + '</div>';
+    if (items.length > show) h += '<div class="smore">还有 ' + (items.length - show) + ' 项</div>';
+    h += '</div>';
+  }
+  el.innerHTML = h;
 }
 
 function render(){
   if (!S.anchor) S.anchor = today();
   S.renderedDay = ymd(today());
-  renderTop();
-  $('b-week').className = 'btn' + (S.view === 'week' ? ' on' : '');
-  $('b-month').className = 'btn' + (S.view === 'month' ? ' on' : '');
-  $('b-add').hidden = !S.canWrite || !S.db;
-  if (S.view === 'week') renderWeek(); else renderMonth();
-  renderNotice();
-}
-
-function renderWeek(){
-  var ws = weekStartOf(S.anchor), t = today(), tk = ymd(t), h = '<div class="week">';
-  var we = addDays(ws, 6);
-  $('b-title').textContent = (ws.getMonth() + 1) + '月' + ws.getDate() + '日 – ' + (we.getMonth() !== ws.getMonth() ? (we.getMonth() + 1) + '月' : '') + we.getDate() + '日';
-  for (var i = 0; i < 7; i++) {
-    var d = addDays(ws, i), key = ymd(d), l = lunarOf(d), hs = holidaysOn(d), items = itemsOn(d);
-    var cls = 'day' + (key === tk ? ' is-today' : key < tk ? ' past' : '');
-    h += '<div class="' + cls + '" data-day="' + key + '"><div class="dh"><span class="wd">' + (key === tk ? '今天' : WD[d.getDay()]) + '</span>' +
-      '<span class="ln">' + esc(lunarLabel(l)) + '</span><span class="dn">' + d.getDate() + '</span></div>';
-    for (var j = 0; j < hs.length; j++) h += '<div class="hl' + (hs[j].type === 'cn' ? ' cn' : '') + '">' + esc(hs[j].name) + '</div>';
-    for (var k = 0; k < items.length; k++) h += evHtml(items[k], key);
-    if (!items.length && !hs.length) h += '<div class="empty">—</div>';
-    h += '</div>';
-  }
-  $('main').innerHTML = h + '</div>';
+  document.body.className = S.view === 'home' ? 'home' : 'month';
+  $('home').hidden = S.view !== 'home';
+  $('monthv').hidden = S.view !== 'month';
+  if (S.view === 'home') { showPhoto(0); renderToday(); renderStrip(); }
+  else renderMonth();
 }
 
 function renderMonth(){
   var a = S.anchor, first = mk(a.getFullYear(), a.getMonth(), 1), start = weekStartOf(first), tk = ymd(today());
-  if (!S.sel || parseYmd(S.sel).getMonth() !== a.getMonth()) S.sel = (ymd(today()).substr(0,7) === ymd(first).substr(0,7)) ? tk : ymd(first);
+  if (!S.sel || parseYmd(S.sel).getMonth() !== a.getMonth()) S.sel = (tk.substr(0,7) === ymd(first).substr(0,7)) ? tk : ymd(first);
   $('b-title').textContent = a.getFullYear() + '年' + (a.getMonth() + 1) + '月';
-  var h = '<div style="overflow-x:auto"><table class="mtable"><thead><tr>';
-  for (var i = 0; i < 7; i++) h += '<th>' + WD[(S.settings.weekStart + i) % 7] + '</th>';
+  $('b-add').hidden = !S.canWrite || !S.db;
+  var h = '<table class="mtable"><thead><tr>', i, j, k, m;
+  for (i = 0; i < 7; i++) h += '<th>' + WD[(S.settings.weekStart + i) % 7] + '</th>';
   h += '</tr></thead><tbody>';
   var d = start;
   for (var r = 0; r < 6; r++) {
@@ -384,47 +492,64 @@ function renderMonth(){
       h += '<td class="' + cls + '" data-mday="' + key + '"><div class="mnum">' + d.getDate() + '</div>';
       if (hs.length) h += '<div class="mln ' + hs[0].type + '">' + esc(hs[0].name.split(' ')[0]) + '</div>';
       else h += '<div class="mln">' + esc(lunarLabel(l)) + '</div>';
-      var shown = 0, dots = '';
-      for (var k = 0; k < items.length; k++) {
-        if (shown < 3) { h += '<div class="mev"><span class="dot' + dotClass(items[k]) + '"' + (items[k].src === 'icloud' ? ' style="background:var(--muted)"' : '') + '></span>' + esc(items[k].allDay ? '' : items[k].start + ' ') + esc(items[k].title) + '</div>'; shown++; }
-        if (k < 4) dots += '<i class="' + dotClass(items[k]).replace(' ', '') + '"></i>';
+      var dots = '';
+      for (k = 0; k < items.length; k++) {
+        if (k < 2) h += '<div class="mev"><span class="dot ' + colClass(items[k]) + '"></span>' + esc(items[k].allDay ? '' : items[k].start + ' ') + esc(items[k].title) + '</div>';
+        if (k < 4) dots += '<i class="' + colClass(items[k]) + '"></i>';
       }
-      if (items.length > 3) h += '<div class="mev" style="color:var(--muted)">还有 ' + (items.length - 3) + ' 项</div>';
+      if (items.length > 2) h += '<div class="mev" style="color:var(--muted)">还有 ' + (items.length - 2) + ' 项</div>';
       if (dots) h += '<div class="mdots">' + dots + '</div>';
       h += '</td>';
       d = addDays(d, 1);
     }
     h += '</tr>';
   }
-  h += '</tbody></table></div>';
-  // selected day list
-  var sd = parseYmd(S.sel), sl = lunarOf(sd), shs = holidaysOn(sd), sit = itemsOn(sd);
-  h += '<div class="dlist"><h3>' + (sd.getMonth() + 1) + '月' + sd.getDate() + '日 ' + WDL[sd.getDay()] + ' <span style="font-weight:400;color:var(--muted);font-size:.9rem">' + esc(lunarFull(sl)) + '</span></h3>';
-  for (var j = 0; j < shs.length; j++) h += '<div class="hl' + (shs[j].type === 'cn' ? ' cn' : '') + '">' + esc(shs[j].name) + '</div>';
-  for (var m = 0; m < sit.length; m++) h += evHtml(sit[m], S.sel);
-  if (!sit.length) h += '<div class="empty">没有安排' + (S.canWrite && S.db ? '，点「＋ 添加」新建' : '') + '</div>';
+  h += '</tbody></table>';
+  var sd = parseYmd(S.sel), shs = holidaysOn(sd), sit = itemsOn(sd);
+  h += '<div class="dlist"><h3>' + (sd.getMonth() + 1) + '月' + sd.getDate() + '日 ' + WDL[sd.getDay()] + ' <span style="font-weight:400;color:var(--muted);font-size:.9rem">' + esc(lunarFull(lunarOf(sd))) + '</span></h3>';
+  for (j = 0; j < shs.length; j++) h += '<div class="hl' + (shs[j].type === 'cn' ? ' cn' : '') + '">' + esc(shs[j].name) + '</div>';
+  for (m = 0; m < sit.length; m++) h += evHtml(sit[m], S.sel);
+  if (!sit.length) h += '<div class="empty">没有安排' + (S.canWrite && S.db ? '，再点一下这一天即可添加' : '') + '</div>';
   h += '</div>';
   $('main').innerHTML = h;
 }
 
-function renderNotice(){
-  var n = $('notice'), f = $('foot');
-  if (S.dbState === 'notoken') { n.hidden = false; n.textContent = '还没有连接日程数据：现在只显示假日和农历。点「设置」粘贴访问令牌即可连接。'; }
-  else if (S.dbState === 'auth') { n.hidden = false; n.textContent = '访问令牌失效了（可能已过期或被删除）。点「设置」重新粘贴新的令牌。'; }
-  else if (S.dbState === 'neterr') { n.hidden = false; n.textContent = '暂时连不上 GitHub，稍后会自动重试。'; }
-  else n.hidden = true;
-  var s = S.dbState === 'loading' ? '正在读取日程…' : S.dbState === 'on' ? '日程每分钟自动更新' : S.dbState === 'stale' ? '暂时无法更新，显示的是上次的日程' : '离线模式';
-  if (S.icloudAt) { var u = new Date(S.icloudAt); s += ' · iCloud 更新于 ' + (u.getMonth() + 1) + '月' + u.getDate() + '日 ' + pad(u.getHours()) + ':' + pad(u.getMinutes()); }
-  else if (S.settings.icsUrl) s += ' · iCloud 等待首次同步';
-  f.innerHTML = esc(s) + ' · <span style="color:var(--bc);font-weight:700">■</span> BC 法定假日 <span style="color:var(--cn);font-weight:700">■</span> 中国传统节日';
+/* ---------- modals ---------- */
+function showModal(h){ $('sheet').innerHTML = h; $('ov').hidden = false; $('ov').scrollTop = 0; }
+function closeModal(){ $('ov').hidden = true; $('sheet').innerHTML = ''; S.modal = null; if (S.wantReload) return location.replace(S.wantReload); soon(); }
+function formErr(msg){ var e = $('f-err'); if (!e) return; e.hidden = false; e.textContent = msg; }
+
+/* one day: list + add */
+function openDay(key){
+  var d = parseYmd(key), hs = holidaysOn(d), items = itemsOn(d), i;
+  var h = '<h2>' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + WDL[d.getDay()] + ' <span style="font-weight:400;color:var(--muted);font-size:.9rem">' + esc(lunarFull(lunarOf(d))) + '</span></h2><div id="dayl">';
+  for (i = 0; i < hs.length; i++) h += '<div class="hl' + (hs[i].type === 'cn' ? ' cn' : '') + '">' + esc(hs[i].name) + '</div>';
+  for (i = 0; i < items.length; i++) h += evHtml(items[i], key);
+  if (!items.length) h += '<div class="empty">这一天没有安排</div>';
+  h += '</div><div class="acts"><span class="sp"></span><button class="btn" id="x-close">关闭</button>' + (S.canWrite && S.db ? '<button class="btn primary" id="x-add">＋ 添加</button>' : '') + '</div>';
+  showModal(h); S.modal = {kind: 'info'};
+  $('x-close').onclick = closeModal;
+  if ($('x-add')) $('x-add').onclick = function(){ openForm(null, key); };
+  $('dayl').onclick = function(e){ var el = findAttr(e.target, 'data-ev'); if (el) openEvent(el.getAttribute('data-ev'), el.getAttribute('data-date')); };
+}
+function openEvent(id, key){
+  if (id.indexOf('x-') === 0) { var its = itemsOn(parseYmd(key)); for (var i = 0; i < its.length; i++) if (its[i].id === id) return openFeedItem(its[i]); return; }
+  openForm(id, key);
+}
+function openFeedItem(it){
+  var r = it.raw, nm = FEEDNAME[it.src];
+  showModal('<h2>' + esc(r.t) + '</h2><div class="kv">' + esc(r.d) + ' ' + (r.ad ? '全天' : esc(r.s) + (r.e ? ' – ' + esc(r.e) : '')) +
+    (r.l ? '<br>地点：' + esc(r.l) : '') + '</div><p class="hint">这条日程来自 ' + nm + '，请在 ' + nm + ' 日历里修改，约半小时内会同步过来。</p>' +
+    '<div class="acts"><span class="sp"></span><button class="btn primary" id="x-close">知道了</button></div>');
+  S.modal = {kind: 'info'}; $('x-close').onclick = closeModal;
 }
 
-/* ---------- modal: event form ---------- */
 var COLORS = [1,2,3,4,5];
 function openForm(id, dateKey){
   if (!S.db || !S.canWrite) return;
   var ev = id ? S.events[id] : null;
-  var date = ev ? ev.date : (dateKey || ymd(S.view === 'month' && S.sel ? parseYmd(S.sel) : today()));
+  if (id && !ev) return;
+  var date = ev ? ev.date : (dateKey || ymd(today()));
   var days = ev && ev.days && ev.days.length ? ev.days : [parseYmd(date).getDay()];
   var h = '<h2>' + (ev ? '编辑日程' : '添加日程') + '</h2><form id="f" autocomplete="off">' +
     '<div class="fr"><label class="lb" for="f-title">标题</label><input type="text" id="f-title" maxlength="80" required value="' + esc(ev ? ev.title : '') + '" placeholder="例如：钢琴课"></div>' +
@@ -440,7 +565,7 @@ function openForm(id, dateKey){
   for (var c = 0; c < COLORS.length; c++) h += '<label class="sw"><input type="radio" name="f-color" id="f-color' + COLORS[c] + '" value="' + COLORS[c] + '"' + (((ev && ev.color) || 1) === COLORS[c] ? ' checked' : '') + '><span class="col' + COLORS[c] + '"></span></label>';
   h += '</div><div class="fr"><label class="lb" for="f-note">备注</label><textarea id="f-note" rows="2" maxlength="300">' + esc(ev ? ev.note || '' : '') + '</textarea></div>' +
     '<div class="err" id="f-err" hidden></div>' +
-    '<div class="acts"><span class="sp">' + (ev ? '<button type="button" class="btn danger" id="f-del">删除</button>' : '') + '</span>' +
+    '<div class="acts"><span class="sp">' + (ev ? '<button type="button" class="btn danger" id="f-del" style="margin-left:0">删除</button>' : '') + '</span>' +
     '<button type="button" class="btn" id="f-cancel">取消</button><button type="submit" class="btn primary" id="f-save">保存</button></div>' +
     '<div id="f-delbox" hidden style="margin-top:10px"></div></form>';
   showModal(h);
@@ -452,19 +577,15 @@ function openForm(id, dateKey){
   if (ev) $('f-del').onclick = function(){
     var b = $('f-delbox'); b.hidden = false;
     b.innerHTML = '<div class="hint" style="margin-bottom:6px">确定删除「' + esc(ev.title) + '」？</div>' +
-      (ev.repeat === 'weekly' && dateKey ? '<button type="button" class="btn danger" id="f-del1">只删 ' + esc(dateKey) + ' 这一次</button>' : '') +
+      (ev.repeat === 'weekly' && dateKey ? '<button type="button" class="btn danger" id="f-del1" style="margin-left:0">只删 ' + esc(dateKey) + ' 这一次</button>' : '') +
       '<button type="button" class="btn danger" id="f-delall">' + (ev.repeat === 'weekly' ? '删除整个系列' : '确认删除') + '</button>';
     $('f-delall').onclick = function(){ doWrite(function(){ return Store.del(id); }); };
-    if ($('f-del1')) $('f-del1').onclick = function(){
-      var ex = (ev.exdates || []).slice(); ex.push(dateKey);
-      doWrite(function(){ return Store.exclude(id, dateKey); });
-    };
+    if ($('f-del1')) $('f-del1').onclick = function(){ doWrite(function(){ return Store.exclude(id, dateKey); }); };
   };
   if (!ev) setTimeout(function(){ try { $('f-title').focus(); } catch (e) {} }, 50);
 }
-function formErr(msg){ var e = $('f-err'); e.hidden = false; e.textContent = msg; }
 function saveForm(){
-  var title = $('f-title').value.replace(/^\s+|\s+$/g, ''), date = $('f-date').value;
+  var title = trim($('f-title').value), date = $('f-date').value;
   if (!title) return formErr('请填写标题。');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return formErr('请选择日期。');
   var allDay = $('f-allday').value === '1', start = $('f-start').value, end = $('f-end').value;
@@ -480,106 +601,118 @@ function saveForm(){
   var id = S.modal.id;
   doWrite(function(){ return Store.put(id, obj); });
 }
+function writeErrText(e){ return e && e.code === 'auth' ? '令牌没有写入权限，请在设置里重新连接。' : '保存失败，请检查网络后重试。'; }
 function doWrite(fn){
   var btn = $('f-save'); if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
   fn().then(function(){ closeModal(); }, function(e){
     if (btn) { btn.disabled = false; btn.textContent = '保存'; }
-    if (e && e.code === 'auth') S.dbState = 'auth';
-    formErr(e && e.code === 'quota_exceeded' ? '数据库已满，请删除一些旧日程后再试。' : e && e.code === 'auth' ? '令牌没有写入权限，请在设置里重新连接。' : '保存失败，请检查网络后重试。');
+    formErr(writeErrText(e));
   });
 }
 
-function openIcloud(it){
-  var ic = it.ic;
-  showModal('<h2>' + esc(ic.t) + '</h2><div class="kv">' + esc(ic.d) + ' ' + (ic.ad ? '全天' : esc(ic.s) + (ic.e ? ' – ' + esc(ic.e) : '')) +
-    (ic.l ? '<br>地点：' + esc(ic.l) : '') + '</div><p class="hint">这条日程来自 iCloud，请在 iPhone 的「日历」App 里修改，每天会自动同步过来。</p>' +
-    '<div class="acts"><span class="sp"></span><button class="btn primary" id="x-close">知道了</button></div>');
-  S.modal = {kind: 'info'}; $('x-close').onclick = closeModal;
-}
-
+/* settings */
 function openSettings(){
-  var at = S.icloudAt ? new Date(S.icloudAt) : null;
+  var ok = S.canWrite && S.db, dis = ok ? '' : ' disabled', pm = S.settings.photoMin, i;
+  var mins = [[1,'每 1 分钟'],[5,'每 5 分钟'],[15,'每 15 分钟'],[60,'每小时'],[0,'不自动切换']];
   var h = '<h2>设置</h2><form id="s" autocomplete="off">' +
-    '<div class="fr"><label class="lb" for="s-ics">iCloud 公开日历链接</label><input type="url" id="s-ics" value="' + esc(S.settings.icsUrl || '') + '" placeholder="webcal://p…-caldav.icloud.com/published/2/…"' + (S.canWrite && S.db ? '' : ' disabled') + '>' +
-    '<p class="hint">在 iPhone「日历」App → 日历列表 → 点日历旁的 ⓘ → 打开「公开日历」→ 拷贝链接，粘贴到这里。每天自动同步一次。' +
-    (at ? '<br>上次同步：' + at.getFullYear() + '-' + pad(at.getMonth() + 1) + '-' + pad(at.getDate()) + ' ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) + '，共 ' + S.icloud.length + ' 条' : '') + '</p></div>' +
-    '<div class="fr"><label class="lb" for="s-ws">每周从哪天开始</label><select id="s-ws"' + (S.canWrite && S.db ? '' : ' disabled') + '><option value="1">周一</option><option value="0"' + (S.settings.weekStart === 0 ? ' selected' : '') + '>周日</option></select></div>' +
-    '<div class="fr"><label class="lb">屏幕常亮</label><button type="button" class="btn" id="s-wake" style="margin-left:0">让屏幕保持常亮</button>' +
-    '<p class="hint" id="s-wake-msg">挂在冰箱上的 iPad 建议在「设置 → 显示与亮度 → 自动锁定」选「永不」。</p></div>' +
-    '<div class="fr"><label class="lb">日程数据</label><button type="button" class="btn" id="s-token" style="margin-left:0">' + (GH.token ? '更换访问令牌' : '粘贴访问令牌') + '</button></div>' +
-    '<div class="err" id="f-err" hidden></div>' +
-    '<div class="acts"><span class="sp"></span><button type="button" class="btn" id="s-cancel">关闭</button>' + (S.canWrite && S.db ? '<button type="submit" class="btn primary" id="f-save">保存</button>' : '') + '</div></form>';
+    '<div class="fr"><label class="lb" for="s-ics">iCloud 公开日历链接</label><input type="url" id="s-ics" value="' + esc(S.settings.icsUrl || '') + '" placeholder="webcal://p…-caldav.icloud.com/published/2/…"' + dis + '>' +
+    '<p class="hint">iPhone「日历」App → 底部「日历」→ 点日历旁的 ⓘ → 打开「公开日历」→「共享链接」拷贝过来。' + feedHint('icloud') + '</p></div>' +
+    '<div class="fr"><label class="lb" for="s-ol">Outlook 日历发布链接（ICS）</label><input type="url" id="s-ol" value="' + esc(S.settings.outlookUrl || '') + '" placeholder="https://outlook.live.com/owa/calendar/…/calendar.ics"' + dis + '>' +
+    '<p class="hint">电脑上打开 outlook.live.com → 右上角齿轮「设置」→ 日历 → 共享日历 →「发布日历」里选日历、权限选「可查看所有详细信息」→ 发布 → 复制 <b>ICS</b> 链接。' + feedHint('outlook') + '</p></div>' +
+    '<p class="hint" style="margin-top:-4px">两个链接都是约每 30 分钟自动同步一次，只读。清空链接并保存即可停止同步。</p>' +
+    '<div class="fr" style="margin-top:12px"><label class="lb" for="s-ws">每周从哪天开始（月历）</label><select id="s-ws"' + dis + '><option value="1">周一</option><option value="0"' + (S.settings.weekStart === 0 ? ' selected' : '') + '>周日</option></select></div>' +
+    '<div class="fr"><label class="lb" for="s-pm">照片切换</label><select id="s-pm"' + dis + '>';
+  for (i = 0; i < mins.length; i++) h += '<option value="' + mins[i][0] + '"' + (pm === mins[i][0] ? ' selected' : '') + '>' + mins[i][1] + '</option>';
+  h += '</select></div><div class="err" id="f-err" hidden></div>' +
+    '<div class="acts"><span class="sp"></span><button type="button" class="btn" id="s-cancel">关闭</button>' + (ok ? '<button type="submit" class="btn primary" id="f-save">保存</button>' : '') + '</div></form>' +
+    '<div class="sec"><h3>照片</h3>' + (ok ?
+      '<div class="thumbs" id="s-thumbs"></div><div style="margin-top:8px"><span class="btn filebtn" id="s-upbtn">＋ 上传照片<input type="file" id="s-file" accept="image/*" multiple></span></div>' +
+      '<p class="hint" id="s-phmsg">最多 ' + MAXPH + ' 张，会自动缩小后保存到你的私有仓库。建议用 iPhone 上传。点主屏上的照片可以手动换下一张。</p>'
+      : '<p class="hint">连接日程数据后才能上传照片。</p>') + '</div>' +
+    '<div class="sec"><h3>这台设备</h3><button type="button" class="btn" id="s-token" style="margin-left:0">' + (GH.token ? '更换访问令牌' : '粘贴访问令牌') + '</button>' +
+    '<button type="button" class="btn" id="s-wake">让屏幕保持常亮</button><button type="button" class="btn" id="s-reload">刷新页面</button>' +
+    '<p class="hint" id="s-wake-msg">挂在冰箱上的 iPad 请在系统「设置 → 显示与亮度 → 自动锁定」选「永不」。版本 ' + esc(BUILD) + '，有新版本时会自动更新。</p></div>';
   showModal(h); S.modal = {kind: 'settings'};
   $('s-cancel').onclick = closeModal;
   $('s-token').onclick = function(){ openTokenSetup(''); };
+  $('s-reload').onclick = function(){ location.replace(location.pathname + '?v=' + Date.now()); };
   $('s-wake').onclick = function(){
-    var msg = $('s-wake-msg');
-    if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function(){ msg.textContent = '已开启：页面打开期间屏幕保持常亮。'; }, function(){ msg.textContent = '这台设备不支持网页保持常亮，请在系统设置里把自动锁定改为「永不」。'; });
-    else msg.textContent = '这台设备不支持网页保持常亮，请在系统设置里把自动锁定改为「永不」。';
+    var msg = $('s-wake-msg'), no = '这台设备不支持网页保持常亮，请在系统设置里把自动锁定改为「永不」。';
+    if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function(){ msg.textContent = '已开启：页面打开期间屏幕保持常亮。'; }, function(){ msg.textContent = no; });
+    else msg.textContent = no;
   };
   $('s').onsubmit = function(e){
     e.preventDefault();
-    var url = $('s-ics').value.replace(/^\s+|\s+$/g, '');
-    if (url && !/^(webcal|https?):\/\/[^\s]+icloud\.com\//i.test(url)) return formErr('这不像是 iCloud 公开日历链接，应以 webcal:// 开头并包含 icloud.com。');
-    doWrite(function(){ return Store.settings({icsUrl: url, weekStart: $('s-ws').value === '0' ? 0 : 1}); });
+    var ics = trim($('s-ics').value), ol = trim($('s-ol').value);
+    if (ics && !/^(webcal|https?):\/\/[^\s\/]*icloud\.com\//i.test(ics)) return formErr('iCloud 链接应以 webcal:// 开头并包含 icloud.com。');
+    if (ol && !/^(webcal|https?):\/\/[^\s\/]*(outlook|office365|office|live)\.[^\s\/]*\/\S+/i.test(ol)) return formErr('这不像是 Outlook 的发布链接，应以 https://outlook.live.com/ 开头、以 .ics 结尾。');
+    if (ol && /\.html(\?|$)/i.test(ol)) return formErr('请复制 ICS 链接（以 .ics 结尾），不是 HTML 链接。');
+    doWrite(function(){ return Store.settings({icsUrl: ics, outlookUrl: ol, weekStart: $('s-ws').value === '0' ? 0 : 1, photoMin: +$('s-pm').value}); });
   };
+  if (ok) {
+    renderThumbs();
+    $('s-file').onchange = function(){ var fs = [], i; for (i = 0; i < this.files.length; i++) fs.push(this.files[i]); this.value = ''; if (fs.length) uploadPhotos(fs); };
+    $('s-thumbs').onclick = function(e){ var el = findAttr(e.target, 'data-del'); if (el) removePhoto(el.getAttribute('data-del')); };
+  }
 }
-
-function showModal(h){ $('sheet').innerHTML = h; $('ov').hidden = false; }
-function closeModal(){ $('ov').hidden = true; $('sheet').innerHTML = ''; S.modal = null; }
+function feedHint(name){
+  var f = S.feeds[name]; if (!f.at) return S.settings[name === 'icloud' ? 'icsUrl' : 'outlookUrl'] ? '<br>等待首次同步…' : '';
+  var at = new Date(f.at);
+  return '<br>上次同步：' + (at.getMonth() + 1) + '月' + at.getDate() + '日 ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) + '，共 ' + f.items.length + ' 条';
+}
 
 /* ---------- interactions ---------- */
 function findAttr(el, name){ while (el && el !== document) { if (el.getAttribute && el.getAttribute(name) != null) return el; el = el.parentNode; } return null; }
+$('t-list').onclick = function(e){ var el = findAttr(e.target, 'data-ev'); if (el) openEvent(el.getAttribute('data-ev'), el.getAttribute('data-date')); };
+$('strip').onclick = function(e){ var el = findAttr(e.target, 'data-day'); if (el) openDay(el.getAttribute('data-day')); };
+$('photo').onclick = function(){ showPhoto(1); };
 $('main').onclick = function(e){
   var evEl = findAttr(e.target, 'data-ev');
-  if (evEl) {
-    var id = evEl.getAttribute('data-ev'), key = evEl.getAttribute('data-date');
-    if (id.indexOf('ic') === 0) { var its = itemsOn(parseYmd(key)); for (var i = 0; i < its.length; i++) if (its[i].id === id) return openIcloud(its[i]); }
-    return openForm(id, key);
-  }
+  if (evEl) return openEvent(evEl.getAttribute('data-ev'), evEl.getAttribute('data-date'));
   var md = findAttr(e.target, 'data-mday');
   if (md) { var k = md.getAttribute('data-mday'); if (S.sel === k && S.canWrite && S.db) return openForm(null, k); S.sel = k; if (parseYmd(k).getMonth() !== S.anchor.getMonth()) S.anchor = parseYmd(k); return renderMonth(); }
-  var dd = findAttr(e.target, 'data-day');
-  if (dd && S.canWrite && S.db) openForm(null, dd.getAttribute('data-day'));
 };
-$('ov').onclick = function(e){ if (e.target === $('ov')) closeModal(); };
-document.onkeydown = function(e){ if ((e.key === 'Escape' || e.keyCode === 27) && S.modal) closeModal(); };
-function setView(v){ S.view = v; try { localStorage.setItem('cal.view', v); } catch (e) {} render(); }
-$('b-week').onclick = function(){ setView('week'); };
-$('b-month').onclick = function(){ setView('month'); };
+$('ov').onclick = function(e){ if (e.target === $('ov') && !S.busy) closeModal(); };
+document.onkeydown = function(e){ if ((e.key === 'Escape' || e.keyCode === 27) && S.modal && !S.busy) closeModal(); };
+function goHome(){ S.view = 'home'; S.off = 0; S.anchor = today(); S.sel = null; window.scrollTo(0, 0); render(); }
+$('h-prev').onclick = function(){ S.off -= stripDays(); renderStrip(); };
+$('h-next').onclick = function(){ S.off += stripDays(); renderStrip(); };
+$('h-month').onclick = function(){ S.view = 'month'; S.anchor = today(); S.sel = null; window.scrollTo(0, 0); render(); };
+$('h-add').onclick = function(){ openForm(null, ymd(today())); };
+$('h-set').onclick = openSettings;
+$('b-home').onclick = goHome;
 $('b-today').onclick = function(){ S.anchor = today(); S.sel = null; render(); };
-function step(n){
-  var a = S.anchor;
-  if (S.view === 'week') S.anchor = addDays(a, 7 * n);
-  else { S.anchor = mk(a.getFullYear(), a.getMonth() + n, 1); S.sel = null; }
-  render();
-}
-$('b-prev').onclick = function(){ step(-1); };
-$('b-next').onclick = function(){ step(1); };
-$('b-add').onclick = function(){ openForm(null, S.view === 'month' ? S.sel : ymd(today())); };
-$('b-set').onclick = openSettings;
+$('b-prev').onclick = function(){ var a = S.anchor; S.anchor = mk(a.getFullYear(), a.getMonth() - 1, 1); S.sel = null; render(); };
+$('b-next').onclick = function(){ var a = S.anchor; S.anchor = mk(a.getFullYear(), a.getMonth() + 1, 1); S.sel = null; render(); };
+$('b-add').onclick = function(){ openForm(null, S.sel || ymd(today())); };
 function touched(){ S.lastTouch = Date.now(); }
 document.addEventListener('touchstart', touched, false);
 document.addEventListener('mousedown', touched, false);
 document.addEventListener('keydown', touched, false);
+var rsT = null;
+function onResize(){ if (rsT) clearTimeout(rsT); rsT = setTimeout(function(){ if (S.view === 'home') { renderToday(); renderStrip(); } }, 200); }
+window.addEventListener('resize', onResize, false);
+window.addEventListener('orientationchange', onResize, false);
 
-/* clock + idle return-to-today (for the fridge) */
+/* clock, photo rotation, idle return to today (for the fridge) */
 setInterval(function(){
-  if (ymd(today()) !== S.renderedDay) { if (!S.modal) { S.anchor = today(); render(); } }
-  else renderTop();
-  if (!S.modal && Date.now() - S.lastTouch > 180000) {
-    var ws = ymd(weekStartOf(today()));
-    if (S.view === 'week' && ymd(weekStartOf(S.anchor)) !== ws) { S.anchor = today(); render(); }
+  var idle = Date.now() - S.lastTouch > 180000;
+  if (!S.modal && idle && (S.view !== 'home' || S.off !== 0)) return goHome();
+  if (ymd(today()) !== S.renderedDay) { if (!S.modal) { S.anchor = today(); render(); } return; }
+  if (S.view === 'home') {
+    renderToday();
+    var pm = S.settings.photoMin;
+    if (pm > 0 && photos().length > 1 && Date.now() - PH.at >= pm * 60000 - 2000) showPhoto(1);
   }
 }, 15000);
 
 /* ---------- data: GitHub private repo as the store ---------- */
 var GH = { owner: /\.github\.io$/i.test(location.hostname) ? location.hostname.split('.')[0] : 'seanxlliu', repo: 'calendar-data', token: '' };
 try { GH.token = localStorage.getItem('cal.token') || ''; } catch (e) {}
-var FILES = { main: {sha: null, etag: null}, icloud: {sha: null, etag: null} };
-var MAIN = { events: {}, settings: {weekStart: 1, icsUrl: ''} };
+var FILES = { main: {sha: null, etag: null}, icloud: {sha: null, etag: null}, outlook: {sha: null, etag: null} };
+var MAIN = { events: {}, settings: {}, photos: [] };
 var rerenderTimer = null;
-function soon(){ if (rerenderTimer) return; rerenderTimer = setTimeout(function(){ rerenderTimer = null; if (S.modal && S.modal.kind !== 'info') { renderTop(); renderNotice(); return; } render(); }, 60); }
+function soon(){ if (rerenderTimer) return; rerenderTimer = setTimeout(function(){ rerenderTimer = null; if (S.modal) return; render(); }, 60); }
 
 function b64dec(s){ return decodeURIComponent(escape(atob(String(s).replace(/\s/g, '')))); }
 function b64enc(s){ return btoa(unescape(encodeURIComponent(s))); }
@@ -592,7 +725,7 @@ function api(method, path, body, etag){
     x.setRequestHeader('Accept', 'application/vnd.github.v3+json');
     if (etag) x.setRequestHeader('If-None-Match', etag);
     if (body) x.setRequestHeader('Content-Type', 'application/json');
-    x.timeout = 30000;
+    x.timeout = 60000;
     x.onload = function(){
       var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
       resolve({status: x.status, json: j, etag: x.getResponseHeader('ETag')});
@@ -605,33 +738,41 @@ function applyMain(obj){
   MAIN = obj || {};
   if (!MAIN.events) MAIN.events = {};
   if (!MAIN.settings) MAIN.settings = {};
+  if (!MAIN.photos) MAIN.photos = [];
   S.events = MAIN.events;
-  S.settings = {icsUrl: MAIN.settings.icsUrl || '', weekStart: MAIN.settings.weekStart === 0 ? 0 : 1};
+  var st = MAIN.settings, pm = +st.photoMin;
+  S.settings = {icsUrl: st.icsUrl || '', outlookUrl: st.outlookUrl || '', weekStart: st.weekStart === 0 ? 0 : 1, photoMin: (pm === 0 || pm === 5 || pm === 15 || pm === 60) && st.photoMin != null ? pm : 1};
 }
 function load(name, force){
-  var f = FILES[name];
+  var f = FILES[name], feed = name !== 'main';
   return api('GET', name + '.json', null, force ? null : f.etag).then(function(r){
     if (r.status === 304) return false;
-    if (r.status === 404) { f.sha = null; return name === 'main' ? (applyMain(null), true) : false; }
+    if (r.status === 404) {
+      f.sha = null; f.etag = null;
+      if (!feed) { applyMain(null); return true; }
+      var had = S.feeds[name].items.length > 0 || !!S.feeds[name].at;
+      S.feeds[name] = {items: [], at: null}; return had;
+    }
     if (r.status === 401 || r.status === 403) throw {code: 'auth'};
     if (r.status !== 200 || !r.json) throw {code: 'http' + r.status};
     f.sha = r.json.sha; f.etag = r.etag;
     var obj = JSON.parse(b64dec(r.json.content));
-    if (name === 'main') applyMain(obj);
-    else { S.icloud = obj.items || []; S.icloudAt = obj.updatedAt || null; }
+    if (!feed) applyMain(obj);
+    else S.feeds[name] = {items: obj.items || [], at: obj.updatedAt || null};
     return true;
   });
 }
+function feedLoad(name){ return load(name).catch(function(e){ if (e && e.code === 'auth') throw e; return false; }); }
 function refresh(){
   if (!GH.token) return;
-  Promise.all([load('main'), load('icloud').catch(function(e){ if (e && e.code === 'auth') throw e; return false; })]).then(function(ch){
+  Promise.all([load('main'), feedLoad('icloud'), feedLoad('outlook')]).then(function(ch){
     var was = S.dbState; S.dbState = 'on'; S.db = true;
-    if (ch[0] || ch[1] || was !== 'on') soon();
+    if (ch[0] || ch[1] || ch[2] || was !== 'on') soon();
   }, function(e){
     S.dbState = e && e.code === 'auth' ? 'auth' : S.db ? 'stale' : 'neterr'; soon();
   });
 }
-/* Read latest, change it, write back. Retries once if someone else saved in between. */
+/* Read latest, change it, write back. Retries if another device saved in between. */
 function mutate(fn, tries){
   tries = tries || 0;
   return load('main', true).then(function(){
@@ -648,14 +789,115 @@ function mutate(fn, tries){
     });
   });
 }
-function newId(){ return 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+function newId(p){ return (p || 'e') + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
 var Store = {
   put: function(id, obj){ return mutate(function(d){ d.events[id || newId()] = obj; }); },
   del: function(id){ return mutate(function(d){ delete d.events[id]; }); },
   exclude: function(id, key){ return mutate(function(d){ var e = d.events[id]; if (!e) return; e.exdates = (e.exdates || []).concat([key]); }); },
-  settings: function(s){ return mutate(function(d){ d.settings = s; }); }
+  settings: function(s){ return mutate(function(d){ var k; d.settings = d.settings || {}; for (k in s) if (s.hasOwnProperty(k)) d.settings[k] = s[k]; }); }
 };
 
+/* ---------- photos: stored as photos/<id>.jpg in the private repo ---------- */
+var MAXPH = 30;
+var PH = {cache: {}, idx: 0, at: 0, layer: 0, shown: null, seq: 0};
+function photos(){ return MAIN.photos || []; }
+function loadPhoto(p){
+  if (PH.cache[p.id]) return Promise.resolve(PH.cache[p.id]);
+  return api('GET', p.path).then(function(r){
+    if (r.status !== 200 || !r.json || !r.json.content) throw {code: 'http' + r.status};
+    var u = 'data:image/jpeg;base64,' + String(r.json.content).replace(/\s/g, '');
+    PH.cache[p.id] = u; return u;
+  });
+}
+function showPhoto(step){
+  var list = photos(), el = $('photo');
+  if (!list.length || !S.db) { if (!el.hidden) { el.hidden = true; PH.shown = null; } return; }
+  el.hidden = false;
+  if (step) PH.idx += step;
+  PH.idx = ((PH.idx % list.length) + list.length) % list.length;
+  var p = list[PH.idx];
+  if (step || !PH.at) PH.at = Date.now();
+  if (PH.shown === p.id) return;
+  var seq = ++PH.seq;
+  loadPhoto(p).then(function(u){
+    if (seq !== PH.seq) return;
+    var nl = 1 - PH.layer;
+    $('pl' + nl).style.backgroundImage = 'url(' + u + ')';
+    $('pl' + nl).className = 'pl on'; $('pl' + PH.layer).className = 'pl';
+    PH.layer = nl; PH.shown = p.id;
+  }, function(){});
+}
+/* Shrink in the browser so each photo stays well under GitHub's 1 MB inline limit. */
+function shrink(file){
+  return new Promise(function(resolve, reject){
+    var U = window.URL || window.webkitURL, url = U.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      try {
+        var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(1, 1400 / Math.max(w, h));
+        var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        var q = 0.82, data = c.toDataURL('image/jpeg', q);
+        while (data.length > 950000 && q > 0.4) { q -= 0.14; data = c.toDataURL('image/jpeg', q); }
+        U.revokeObjectURL(url);
+        resolve(data.substr(data.indexOf(',') + 1));
+      } catch (e) { reject({code: 'image'}); }
+    };
+    img.onerror = function(){ reject({code: 'image'}); };
+    img.src = url;
+  });
+}
+function phMsg(t){ var m = $('s-phmsg'); if (m) m.textContent = t; }
+function uploadPhotos(files){
+  var room = MAXPH - photos().length, added = [], failed = 0, i = 0;
+  if (room <= 0) return phMsg('已经有 ' + MAXPH + ' 张了，请先删除几张。');
+  if (files.length > room) files = files.slice(0, room);
+  S.busy = true;
+  function next(){
+    if (i >= files.length) return finish();
+    phMsg('正在上传 ' + (i + 1) + ' / ' + files.length + ' …请不要关闭');
+    var id = newId('p'), path = 'photos/' + id + '.jpg';
+    return shrink(files[i]).then(function(b64){
+      return api('PUT', path, {message: 'add photo', content: b64});
+    }).then(function(r){
+      if (r.status === 401 || r.status === 403 || r.status === 404) throw {code: 'auth'};
+      if (r.status !== 201 && r.status !== 200) throw {code: 'http' + r.status};
+      added.push({id: id, path: path, sha: r.json.content.sha});
+    }).then(function(){ i++; return next(); }, function(e){ if (e && e.code === 'auth') throw e; failed++; i++; return next(); });
+  }
+  function finish(){
+    if (!added.length) { S.busy = false; return phMsg('没有上传成功，请换一张照片或检查网络。'); }
+    return mutate(function(d){ d.photos = (d.photos || []).concat(added); }).then(function(){
+      S.busy = false; phMsg('已上传 ' + added.length + ' 张' + (failed ? '，' + failed + ' 张失败' : '') + '。'); renderThumbs(); showPhoto(0);
+    });
+  }
+  Promise.resolve().then(next).catch(function(e){ S.busy = false; phMsg(writeErrText(e)); });
+}
+function removePhoto(id){
+  var list = photos(), p = null, i;
+  for (i = 0; i < list.length; i++) if (list[i].id === id) p = list[i];
+  if (!p || S.busy) return;
+  if (window.confirm && !window.confirm('删除这张照片？')) return;
+  S.busy = true; phMsg('正在删除…');
+  api('DELETE', p.path, {message: 'remove photo', sha: p.sha}).then(function(r){
+    if (r.status === 401 || r.status === 403) throw {code: 'auth'};
+    return mutate(function(d){ var out = [], a = d.photos || []; for (var j = 0; j < a.length; j++) if (a[j].id !== id) out.push(a[j]); d.photos = out; });
+  }).then(function(){ S.busy = false; delete PH.cache[id]; PH.shown = null; phMsg('已删除。'); renderThumbs(); showPhoto(0); },
+    function(e){ S.busy = false; phMsg(writeErrText(e)); });
+}
+function renderThumbs(){
+  var box = $('s-thumbs'); if (!box) return;
+  var list = photos(), h = '', i = 0;
+  for (var k = 0; k < list.length; k++) h += '<div class="th" id="th-' + esc(list[k].id) + '"><button type="button" class="thx" data-del="' + esc(list[k].id) + '" aria-label="删除照片">×</button></div>';
+  box.innerHTML = h || '<span class="hint" style="margin-left:4px">还没有照片。</span>';
+  function one(){
+    if (i >= list.length || !$('s-thumbs')) return;
+    var p = list[i++];
+    loadPhoto(p).then(function(u){ var el = $('th-' + p.id); if (el) el.style.backgroundImage = 'url(' + u + ')'; one(); }, one);
+  }
+  one();
+}
+
+/* ---------- token ---------- */
 function openTokenSetup(msg){
   showModal('<h2>连接日程数据</h2><form id="tk" autocomplete="off">' +
     (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
@@ -680,12 +922,27 @@ function openTokenSetup(msg){
   };
 }
 
+/* ---------- self-update: a page left open on the fridge reloads itself when a new version is published ---------- */
+function checkUpdate(){
+  if (!/^https?:$/.test(location.protocol) || !BUILD) return;
+  var x = new XMLHttpRequest();
+  x.open('GET', location.pathname + '?v=' + Date.now(), true);
+  x.onload = function(){
+    var m = /name="build" content="([^"]+)"/.exec(x.responseText || '');
+    if (x.status !== 200 || !m || m[1] === BUILD) return;
+    var url = location.pathname + '?v=' + encodeURIComponent(m[1]);
+    if (S.modal || S.busy) S.wantReload = url; else location.replace(url);
+  };
+  x.send(null);
+}
+
 S.anchor = today();
-if (GH.token) S.dbState = 'loading'; else S.dbState = 'notoken';
+S.dbState = GH.token ? 'loading' : 'notoken';
 render();
 if (GH.token) refresh(); else openTokenSetup('');
 setInterval(function(){ if (!S.modal) refresh(); }, 60000);
-document.addEventListener('visibilitychange', function(){ if (!document.hidden) refresh(); }, false);
+setInterval(checkUpdate, 600000);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { refresh(); checkUpdate(); } }, false);
 })();
 </script>
 </body>
