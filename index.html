@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="家庭日历">
-<meta name="build" content="2026100302">
+<meta name="build" content="2026100303">
 <link rel="apple-touch-icon" href="icon.png">
 <title>冰箱家庭日历</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&display=swap">
@@ -42,7 +42,7 @@ button:focus,input:focus,select:focus,textarea:focus{outline:3px solid var(--acc
 .btn.danger{color:var(--danger);border-color:var(--danger)}
 .btn.icon{padding:8px 12px;font-weight:700}
 .col1{background:var(--c1)!important}.col2{background:var(--c2)!important}.col3{background:var(--c3)!important}.col4{background:var(--c4)!important}.col5{background:var(--c5)!important}
-.colicloud{background:var(--ic)!important}.coloutlook{background:var(--ol)!important}
+.coloutlook{background:var(--ol)!important}
 
 /* ---------- home: today panel ---------- */
 #home{padding:12px}
@@ -256,14 +256,14 @@ var MN = ['','正','二','三','四','五','六','七','八','九','十','冬','
 var DN = ['','初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
 var WD = ['周日','周一','周二','周三','周四','周五','周六'];
 var WDL = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
-var FEEDS = ['icloud', 'outlook'];
-var FEEDNAME = {icloud: 'iCloud', outlook: 'Outlook'};
+var FEEDS = ['outlook'];
+var FEEDNAME = {outlook: 'Outlook'};
 var BUILD = (function(){ var m = document.querySelector('meta[name=build]'); return m ? m.getAttribute('content') : ''; })();
 
 var S = {
   view: 'home', anchor: null, sel: null, off: 0,
-  events: {}, feeds: {icloud: {items: [], at: null}, outlook: {items: [], at: null}},
-  settings: {weekStart: 1, icsUrl: '', outlookUrl: '', photoMin: 1},
+  events: {}, feeds: {outlook: {items: [], at: null}},
+  settings: {weekStart: 1, outlookUrl: '', photoMin: 1},
   db: null, dbState: 'loading', canWrite: true, busy: false,
   modal: null, lastTouch: Date.now(), renderedDay: '', listHtml: ''
 };
@@ -614,11 +614,9 @@ function openSettings(){
   var ok = S.canWrite && S.db, dis = ok ? '' : ' disabled', pm = S.settings.photoMin, i;
   var mins = [[1,'每 1 分钟'],[5,'每 5 分钟'],[15,'每 15 分钟'],[60,'每小时'],[0,'不自动切换']];
   var h = '<h2>设置</h2><form id="s" autocomplete="off">' +
-    '<div class="fr"><label class="lb" for="s-ics">iCloud 公开日历链接</label><input type="url" id="s-ics" value="' + esc(S.settings.icsUrl || '') + '" placeholder="webcal://p…-caldav.icloud.com/published/2/…"' + dis + '>' +
-    '<p class="hint">iPhone「日历」App → 底部「日历」→ 点日历旁的 ⓘ → 打开「公开日历」→「共享链接」拷贝过来。' + feedHint('icloud') + '</p></div>' +
     '<div class="fr"><label class="lb" for="s-ol">Outlook 日历发布链接（ICS）</label><input type="url" id="s-ol" value="' + esc(S.settings.outlookUrl || '') + '" placeholder="https://outlook.live.com/owa/calendar/…/calendar.ics"' + dis + '>' +
     '<p class="hint">电脑上打开 outlook.live.com → 右上角齿轮「设置」→ 日历 → 共享日历 →「发布日历」里选日历、权限选「可查看所有详细信息」→ 发布 → 复制 <b>ICS</b> 链接。' + feedHint('outlook') + '</p></div>' +
-    '<p class="hint" style="margin-top:-4px">两个链接都是约每 30 分钟自动同步一次，只读。清空链接并保存即可停止同步。</p>' +
+    '<p class="hint" style="margin-top:-4px">链接约每 30 分钟自动同步一次，只读。清空链接并保存即可停止同步。</p>' +
     '<div class="fr" style="margin-top:12px"><label class="lb" for="s-ws">每周从哪天开始（月历）</label><select id="s-ws"' + dis + '><option value="1">周一</option><option value="0"' + (S.settings.weekStart === 0 ? ' selected' : '') + '>周日</option></select></div>' +
     '<div class="fr"><label class="lb" for="s-pm">照片切换</label><select id="s-pm"' + dis + '>';
   for (i = 0; i < mins.length; i++) h += '<option value="' + mins[i][0] + '"' + (pm === mins[i][0] ? ' selected' : '') + '>' + mins[i][1] + '</option>';
@@ -642,11 +640,10 @@ function openSettings(){
   };
   $('s').onsubmit = function(e){
     e.preventDefault();
-    var ics = trim($('s-ics').value), ol = trim($('s-ol').value);
-    if (ics && !/^(webcal|https?):\/\/[^\s\/]*icloud\.com\//i.test(ics)) return formErr('iCloud 链接应以 webcal:// 开头并包含 icloud.com。');
+    var ol = trim($('s-ol').value);
     if (ol && !/^(webcal|https?):\/\/[^\s\/]*(outlook|office365|office|live)\.[^\s\/]*\/\S+/i.test(ol)) return formErr('这不像是 Outlook 的发布链接，应以 https://outlook.live.com/ 开头、以 .ics 结尾。');
     if (ol && /\.html(\?|$)/i.test(ol)) return formErr('请复制 ICS 链接（以 .ics 结尾），不是 HTML 链接。');
-    doWrite(function(){ return Store.settings({icsUrl: ics, outlookUrl: ol, weekStart: $('s-ws').value === '0' ? 0 : 1, photoMin: +$('s-pm').value}); });
+    doWrite(function(){ return Store.settings({outlookUrl: ol, weekStart: $('s-ws').value === '0' ? 0 : 1, photoMin: +$('s-pm').value}); });
   };
   if (ok) {
     renderThumbs();
@@ -655,7 +652,7 @@ function openSettings(){
   }
 }
 function feedHint(name){
-  var f = S.feeds[name]; if (!f.at) return S.settings[name === 'icloud' ? 'icsUrl' : 'outlookUrl'] ? '<br>等待首次同步…' : '';
+  var f = S.feeds[name]; if (!f.at) return S.settings.outlookUrl ? '<br>等待首次同步…' : '';
   var at = new Date(f.at);
   return '<br>上次同步：' + (at.getMonth() + 1) + '月' + at.getDate() + '日 ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) + '，共 ' + f.items.length + ' 条';
 }
@@ -708,7 +705,7 @@ setInterval(function(){
 /* ---------- data: a GitHub repo (public to read, token to write) as the store ---------- */
 var GH = { owner: /\.github\.io$/i.test(location.hostname) ? location.hostname.split('.')[0] : 'seanxlliu', repo: 'calendar-data', token: '' };
 try { GH.token = localStorage.getItem('cal.token') || ''; } catch (e) {}
-var FILES = { main: {sha: null, etag: null}, icloud: {sha: null, etag: null}, outlook: {sha: null, etag: null} };
+var FILES = { main: {sha: null, etag: null}, outlook: {sha: null, etag: null} };
 var MAIN = { events: {}, settings: {}, photos: [] };
 var rerenderTimer = null;
 function soon(){ if (rerenderTimer) return; rerenderTimer = setTimeout(function(){ rerenderTimer = null; if (S.modal) return; render(); }, 60); }
@@ -752,7 +749,7 @@ function applyMain(obj){
   if (!MAIN.photos) MAIN.photos = [];
   S.events = MAIN.events;
   var st = MAIN.settings, pm = +st.photoMin;
-  S.settings = {icsUrl: st.icsUrl || '', outlookUrl: st.outlookUrl || '', weekStart: st.weekStart === 0 ? 0 : 1, photoMin: (pm === 0 || pm === 5 || pm === 15 || pm === 60) && st.photoMin != null ? pm : 1};
+  S.settings = {outlookUrl: st.outlookUrl || '', weekStart: st.weekStart === 0 ? 0 : 1, photoMin: (pm === 0 || pm === 5 || pm === 15 || pm === 60) && st.photoMin != null ? pm : 1};
 }
 function load(name, force){
   var f = FILES[name], feed = name !== 'main';
@@ -789,9 +786,9 @@ function load(name, force){
 }
 function feedLoad(name){ return load(name).catch(function(e){ if (e && e.code === 'auth') throw e; return false; }); }
 function refresh(){
-  Promise.all([load('main'), feedLoad('icloud'), feedLoad('outlook')]).then(function(ch){
+  Promise.all([load('main'), feedLoad('outlook')]).then(function(ch){
     var was = S.dbState; S.dbState = 'on'; S.db = true;
-    if (ch[0] || ch[1] || ch[2] || was !== 'on') soon();
+    if (ch[0] || ch[1] || was !== 'on') soon();
   }, function(e){
     S.dbErr = e && (e.code || e.message) || 'unknown';
     S.dbState = e && e.code === 'auth' ? 'auth' : S.db ? 'stale' : 'neterr'; soon();
