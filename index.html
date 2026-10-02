@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="家庭日历">
-<meta name="build" content="2026100301">
+<meta name="build" content="2026100302">
 <link rel="apple-touch-icon" href="icon.png">
 <title>冰箱家庭日历</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&display=swap">
@@ -434,9 +434,9 @@ function renderToday(){
 
 function statusText(){
   if (S.dbState === 'auth') return '访问令牌失效，点「设置」重新粘贴';
-  if (S.dbState === 'neterr') return '暂时连不上 GitHub，稍后自动重试';
+  if (S.dbState === 'neterr') return '暂时连不上 GitHub（' + S.dbErr + '），稍后自动重试';
   if (S.dbState === 'loading') return '正在读取…';
-  var s = S.dbState === 'stale' ? '暂时无法更新' : GH.token ? '' : '只读模式，点「设置」可登录编辑';
+  var s = S.dbState === 'stale' ? '暂时无法更新（' + S.dbErr + '）' : GH.token ? '' : '只读模式，点「设置」可登录编辑';
   for (var i = 0; i < FEEDS.length; i++) {
     var f = S.feeds[FEEDS[i]];
     if (f.at) { var u = new Date(f.at); s += (s ? ' · ' : '') + FEEDNAME[FEEDS[i]] + ' ' + (u.getMonth() + 1) + '/' + u.getDate() + ' ' + pad(u.getHours()) + ':' + pad(u.getMinutes()); }
@@ -793,6 +793,7 @@ function refresh(){
     var was = S.dbState; S.dbState = 'on'; S.db = true;
     if (ch[0] || ch[1] || ch[2] || was !== 'on') soon();
   }, function(e){
+    S.dbErr = e && (e.code || e.message) || 'unknown';
     S.dbState = e && e.code === 'auth' ? 'auth' : S.db ? 'stale' : 'neterr'; soon();
   });
 }
