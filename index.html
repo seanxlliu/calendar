@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="家庭日历">
-<meta name="build" content="2026100303">
+<meta name="build" content="2026100304">
 <link rel="apple-touch-icon" href="icon.png">
 <title>冰箱家庭日历</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&display=swap">
@@ -707,6 +707,7 @@ var GH = { owner: /\.github\.io$/i.test(location.hostname) ? location.hostname.s
 try { GH.token = localStorage.getItem('cal.token') || ''; } catch (e) {}
 var FILES = { main: {sha: null, etag: null}, outlook: {sha: null, etag: null} };
 var MAIN = { events: {}, settings: {}, photos: [] };
+var RAWBAD = false; /* raw.githubusercontent.com unreachable (blocked on some networks) → read via the API instead */
 var rerenderTimer = null;
 function soon(){ if (rerenderTimer) return; rerenderTimer = setTimeout(function(){ rerenderTimer = null; if (S.modal) return; render(); }, 60); }
 
@@ -717,7 +718,7 @@ function api(method, path, body, etag){
     var x = new XMLHttpRequest();
     var url = 'https://api.github.com/repos/' + GH.owner + '/' + GH.repo + '/contents/' + path + (method === 'GET' ? '?t=' + Date.now() : '');
     x.open(method, url, true);
-    x.setRequestHeader('Authorization', 'token ' + GH.token);
+    if (GH.token) x.setRequestHeader('Authorization', 'token ' + GH.token);
     x.setRequestHeader('Accept', 'application/vnd.github.v3+json');
     if (etag) x.setRequestHeader('If-None-Match', etag);
     if (body) x.setRequestHeader('Content-Type', 'application/json');
@@ -753,7 +754,7 @@ function applyMain(obj){
 }
 function load(name, force){
   var f = FILES[name], feed = name !== 'main';
-  if (!GH.token) return rawGet(name + '.json').then(function(r){
+  if (!GH.token && !RAWBAD) return rawGet(name + '.json').then(function(r){
     if (r.status === 404) {
       if (!feed) { applyMain(null); return true; }
       var had = S.feeds[name].items.length > 0 || !!S.feeds[name].at;
@@ -766,6 +767,9 @@ function load(name, force){
     if (!feed) applyMain(obj);
     else S.feeds[name] = {items: obj.items || [], at: obj.updatedAt || null};
     return true;
+  }, function(e){
+    if (e && e.code === 'network') { RAWBAD = true; return load(name, force); }
+    throw e;
   });
   return api('GET', name + '.json', null, force ? null : f.etag).then(function(r){
     if (r.status === 304) return false;
@@ -775,7 +779,7 @@ function load(name, force){
       var had = S.feeds[name].items.length > 0 || !!S.feeds[name].at;
       S.feeds[name] = {items: [], at: null}; return had;
     }
-    if (r.status === 401 || r.status === 403) throw {code: 'auth'};
+    if (r.status === 401 || r.status === 403) throw {code: GH.token ? 'auth' : 'ratelimit'};
     if (r.status !== 200 || !r.json) throw {code: 'http' + r.status};
     f.sha = r.json.sha; f.etag = r.etag;
     var obj = JSON.parse(b64dec(r.json.content));
@@ -825,13 +829,16 @@ var PH = {cache: {}, idx: 0, at: 0, layer: 0, shown: null, seq: 0};
 function photos(){ return MAIN.photos || []; }
 function loadPhoto(p){
   if (PH.cache[p.id]) return Promise.resolve(PH.cache[p.id]);
-  if (!GH.token) return rawGet(p.path).then(function(r){
+  if (!GH.token && !RAWBAD) return rawGet(p.path).then(function(r){
     if (r.status !== 200) throw {code: 'http' + r.status};
     return new Promise(function(res, rej){
       var fr = new FileReader();
       fr.onload = function(){ PH.cache[p.id] = fr.result; res(fr.result); };
       fr.onerror = rej; fr.readAsDataURL(r.body);
     });
+  }, function(e){
+    if (e && e.code === 'network') { RAWBAD = true; return loadPhoto(p); }
+    throw e;
   });
   return api('GET', p.path).then(function(r){
     if (r.status !== 200 || !r.json || !r.json.content) throw {code: 'http' + r.status};
