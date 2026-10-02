@@ -433,11 +433,10 @@ function renderToday(){
 }
 
 function statusText(){
-  if (S.dbState === 'notoken') return '未连接日程数据，点「设置」粘贴令牌';
   if (S.dbState === 'auth') return '访问令牌失效，点「设置」重新粘贴';
   if (S.dbState === 'neterr') return '暂时连不上 GitHub，稍后自动重试';
   if (S.dbState === 'loading') return '正在读取…';
-  var s = S.dbState === 'stale' ? '暂时无法更新' : '';
+  var s = S.dbState === 'stale' ? '暂时无法更新' : GH.token ? '' : '只读模式，点「设置」可登录编辑';
   for (var i = 0; i < FEEDS.length; i++) {
     var f = S.feeds[FEEDS[i]];
     if (f.at) { var u = new Date(f.at); s += (s ? ' · ' : '') + FEEDNAME[FEEDS[i]] + ' ' + (u.getMonth() + 1) + '/' + u.getDate() + ' ' + pad(u.getHours()) + ':' + pad(u.getMinutes()); }
@@ -627,9 +626,9 @@ function openSettings(){
     '<div class="acts"><span class="sp"></span><button type="button" class="btn" id="s-cancel">关闭</button>' + (ok ? '<button type="submit" class="btn primary" id="f-save">保存</button>' : '') + '</div></form>' +
     '<div class="sec"><h3>照片</h3>' + (ok ?
       '<div class="thumbs" id="s-thumbs"></div><div style="margin-top:8px"><span class="btn filebtn" id="s-upbtn">＋ 上传照片<input type="file" id="s-file" accept="image/*" multiple></span></div>' +
-      '<p class="hint" id="s-phmsg">最多 ' + MAXPH + ' 张，会自动缩小后保存到你的私有仓库。建议用 iPhone 上传。点主屏上的照片可以手动换下一张。</p>'
-      : '<p class="hint">连接日程数据后才能上传照片。</p>') + '</div>' +
-    '<div class="sec"><h3>这台设备</h3><button type="button" class="btn" id="s-token" style="margin-left:0">' + (GH.token ? '更换访问令牌' : '粘贴访问令牌') + '</button>' +
+      '<p class="hint" id="s-phmsg">最多 ' + MAXPH + ' 张，会自动缩小后保存到数据仓库。建议用 iPhone 上传。点主屏上的照片可以手动换下一张。</p>'
+      : '<p class="hint">登录后才能上传照片。</p>') + '</div>' +
+    '<div class="sec"><h3>这台设备</h3><button type="button" class="btn" id="s-token" style="margin-left:0">' + (GH.token ? '更换访问令牌' : '登录以编辑（粘贴令牌）') + '</button>' +
     '<button type="button" class="btn" id="s-wake">让屏幕保持常亮</button><button type="button" class="btn" id="s-reload">刷新页面</button>' +
     '<p class="hint" id="s-wake-msg">挂在冰箱上的 iPad 请在系统「设置 → 显示与亮度 → 自动锁定」选「永不」。版本 ' + esc(BUILD) + '，有新版本时会自动更新。</p></div>';
   showModal(h); S.modal = {kind: 'settings'};
@@ -706,7 +705,7 @@ setInterval(function(){
   }
 }, 15000);
 
-/* ---------- data: GitHub private repo as the store ---------- */
+/* ---------- data: a GitHub repo (public to read, token to write) as the store ---------- */
 var GH = { owner: /\.github\.io$/i.test(location.hostname) ? location.hostname.split('.')[0] : 'seanxlliu', repo: 'calendar-data', token: '' };
 try { GH.token = localStorage.getItem('cal.token') || ''; } catch (e) {}
 var FILES = { main: {sha: null, etag: null}, icloud: {sha: null, etag: null}, outlook: {sha: null, etag: null} };
@@ -734,6 +733,18 @@ function api(method, path, body, etag){
     x.send(body ? JSON.stringify(body) : null);
   });
 }
+/* No token: read the public data repo straight from raw.githubusercontent.com (no API rate limit). */
+function rawGet(path){
+  return new Promise(function(resolve, reject){
+    var x = new XMLHttpRequest();
+    x.open('GET', 'https://raw.githubusercontent.com/' + GH.owner + '/' + GH.repo + '/HEAD/' + path + '?t=' + Date.now(), true);
+    x.responseType = path.indexOf('.json') > 0 ? 'text' : 'blob';
+    x.timeout = 60000;
+    x.onload = function(){ resolve({status: x.status, body: x.response}); };
+    x.onerror = x.ontimeout = function(){ reject({code: 'network'}); };
+    x.send(null);
+  });
+}
 function applyMain(obj){
   MAIN = obj || {};
   if (!MAIN.events) MAIN.events = {};
@@ -745,6 +756,20 @@ function applyMain(obj){
 }
 function load(name, force){
   var f = FILES[name], feed = name !== 'main';
+  if (!GH.token) return rawGet(name + '.json').then(function(r){
+    if (r.status === 404) {
+      if (!feed) { applyMain(null); return true; }
+      var had = S.feeds[name].items.length > 0 || !!S.feeds[name].at;
+      S.feeds[name] = {items: [], at: null}; return had;
+    }
+    if (r.status !== 200) throw {code: 'http' + r.status};
+    if (f.etag === r.body) return false;
+    f.etag = r.body;
+    var obj = JSON.parse(r.body);
+    if (!feed) applyMain(obj);
+    else S.feeds[name] = {items: obj.items || [], at: obj.updatedAt || null};
+    return true;
+  });
   return api('GET', name + '.json', null, force ? null : f.etag).then(function(r){
     if (r.status === 304) return false;
     if (r.status === 404) {
@@ -764,7 +789,6 @@ function load(name, force){
 }
 function feedLoad(name){ return load(name).catch(function(e){ if (e && e.code === 'auth') throw e; return false; }); }
 function refresh(){
-  if (!GH.token) return;
   Promise.all([load('main'), feedLoad('icloud'), feedLoad('outlook')]).then(function(ch){
     var was = S.dbState; S.dbState = 'on'; S.db = true;
     if (ch[0] || ch[1] || ch[2] || was !== 'on') soon();
@@ -797,12 +821,20 @@ var Store = {
   settings: function(s){ return mutate(function(d){ var k; d.settings = d.settings || {}; for (k in s) if (s.hasOwnProperty(k)) d.settings[k] = s[k]; }); }
 };
 
-/* ---------- photos: stored as photos/<id>.jpg in the private repo ---------- */
+/* ---------- photos: stored as photos/<id>.jpg in the data repo ---------- */
 var MAXPH = 30;
 var PH = {cache: {}, idx: 0, at: 0, layer: 0, shown: null, seq: 0};
 function photos(){ return MAIN.photos || []; }
 function loadPhoto(p){
   if (PH.cache[p.id]) return Promise.resolve(PH.cache[p.id]);
+  if (!GH.token) return rawGet(p.path).then(function(r){
+    if (r.status !== 200) throw {code: 'http' + r.status};
+    return new Promise(function(res, rej){
+      var fr = new FileReader();
+      fr.onload = function(){ PH.cache[p.id] = fr.result; res(fr.result); };
+      fr.onerror = rej; fr.readAsDataURL(r.body);
+    });
+  });
   return api('GET', p.path).then(function(r){
     if (r.status !== 200 || !r.json || !r.json.content) throw {code: 'http' + r.status};
     var u = 'data:image/jpeg;base64,' + String(r.json.content).replace(/\s/g, '');
@@ -899,10 +931,10 @@ function renderThumbs(){
 
 /* ---------- token ---------- */
 function openTokenSetup(msg){
-  showModal('<h2>连接日程数据</h2><form id="tk" autocomplete="off">' +
+  showModal('<h2>登录以编辑</h2><form id="tk" autocomplete="off">' +
     (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
     '<div class="fr"><label class="lb" for="tk-in">GitHub 访问令牌</label><input type="text" id="tk-in" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_…" value=""></div>' +
-    '<p class="hint">每台设备只需要粘贴一次，会保存在这台设备上。令牌只用来读写你的私有仓库 ' + esc(GH.owner) + '/' + esc(GH.repo) + '。</p>' +
+    '<p class="hint">查看日程不需要令牌；只有添加、修改日程和上传照片才要。每台设备只需要粘贴一次，会保存在这台设备上。令牌只用来写入数据仓库 ' + esc(GH.owner) + '/' + esc(GH.repo) + '。</p>' +
     '<div class="err" id="f-err" hidden></div>' +
     '<div class="acts"><span class="sp"></span><button type="button" class="btn" id="tk-skip">先不连接</button><button type="submit" class="btn primary" id="f-save">连接</button></div></form>');
   S.modal = {kind: 'token'};
@@ -914,9 +946,9 @@ function openTokenSetup(msg){
     GH.token = t; var btn = $('f-save'); btn.disabled = true; btn.textContent = '连接中…';
     load('main', true).then(function(){
       try { localStorage.setItem('cal.token', t); } catch (er) {}
-      S.dbState = 'on'; S.db = true; closeModal(); refresh(); render();
+      S.dbState = 'on'; S.db = true; S.canWrite = true; closeModal(); refresh(); render();
     }, function(er){
-      GH.token = ''; btn.disabled = false; btn.textContent = '连接';
+      GH.token = ''; S.canWrite = false; btn.disabled = false; btn.textContent = '连接';
       formErr(er && er.code === 'auth' ? '令牌无效或没有访问权限。' : '连接失败，请检查网络后重试。');
     });
   };
@@ -937,9 +969,10 @@ function checkUpdate(){
 }
 
 S.anchor = today();
-S.dbState = GH.token ? 'loading' : 'notoken';
+S.dbState = 'loading';
+S.canWrite = !!GH.token;
 render();
-if (GH.token) refresh(); else openTokenSetup('');
+refresh();
 setInterval(function(){ if (!S.modal) refresh(); }, 60000);
 setInterval(checkUpdate, 600000);
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) { refresh(); checkUpdate(); } }, false);
